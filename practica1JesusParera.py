@@ -62,21 +62,26 @@ def producer(storage, empty, non_empty, mutex,posicion):
     non_empty.release()
     
 def consumer(storage, empty, non_empty, mutex,definitiva):
-    while (len(definitiva)!=(NPROD*N)): #Cogemos todos los números que se producen.#
-        non_empty.acquire() #Dejará continuar cuando el productor que está metiendo el número termine. #
+    for i in non_empty: #Esperamos que todos los productores hallan metido un n�mero.#
+        i.acquire()
+    while (len(definitiva)!=(NPROD*N)): #Cogemos todos los numeros que se producen.#
+        
         dato = get_data(storage, mutex)#Escogemos el menor#
         definitiva=definitiva+[dato[0]]#Añadimos el menor a la lista.#
         print (f"{current_process().name}:: Tenemos:", storage[:],"cogemos el dato del productor",dato[1],"y queda:", definitiva)
         empty[dato[1]].release()#Llamamos al semáforo del productor el cual hemos cogido el número.#
+        non_empty[dato[1]].acquire() #Dejará continuar cuando el productor que está metiendo el número termine. #
         delay()
-    print("La lista final queda:",definitiva) #Solución final.#
+    print("La lista final queda:",definitiva) #Solucion final.#
 
 def main():
     storage = Array('i', NPROD) #Array con los mismos elementos que el número de productores.#
     for i in range(NPROD):#Empieza con -1s.#
         storage[i] = -1
     print ("almacen inicial", storage[:])
-    non_empty = Semaphore(0) #Semáforo del consumidor.#
+    non_empty=[]
+    for i in range(NPROD):  
+        non_empty = non_empty + [Semaphore(0)] #Sem�foro para que cada productor avise al consumidor.#
     empty=[]
     for i in range(NPROD):  
         empty = empty + [BoundedSemaphore(1)] #Cada semáforo correspoderá a un productor.#
@@ -84,7 +89,7 @@ def main():
 
     prodlst = [ Process(target=producer,
                         name=f'prod_{i}',
-                        args=(storage, empty[i], non_empty, mutex,i))
+                        args=(storage, empty[i], non_empty[i], mutex,i))
                 for i in range(NPROD) ]#A cada productor le pasamos su semáforo correspondiente.#
 
     conslst = [ Process(target=consumer,
